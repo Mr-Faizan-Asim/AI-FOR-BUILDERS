@@ -1,27 +1,167 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>AI Compliance Assistant</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Compliance Assistant</title>
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        /* Modern Scrollbar */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Ensure lists are visible inside prose */
+        .prose ul { list-style-type: disc !important; padding-left: 1.25rem !important; }
+        .prose ol { list-style-type: decimal !important; padding-left: 1.25rem !important; }
+        
+        /* Smooth fade-in for messages */
+        .message-fade { animation: fadeIn 0.3s ease-out forwards; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
 </head>
-<body>
-  <h2>AI Building Compliance Assistant</h2>
+<body class="bg-slate-50 font-sans text-slate-900">
 
-  <input id="msg" placeholder="Describe your building project..." />
-  <button onclick="send()">Ask</button>
+    <div class="flex flex-col h-screen max-w-5xl mx-auto shadow-2xl bg-white overflow-hidden">
+        
+        <header class="flex items-center justify-between py-4 px-8 border-b bg-white z-10">
+            <div class="flex items-center gap-4">
+                <div class="bg-blue-600 p-2.5 rounded-xl shadow-lg shadow-blue-200">
+                    <i class="fa-solid fa-shield-halved text-white text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-tight text-slate-800">Compliance Copilot</h1>
+                    <p class="text-[11px] font-medium text-green-600 flex items-center gap-1.5 uppercase tracking-widest">
+                        <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span> System Live
+                    </p>
+                </div>
+            </div>
+            <button onclick="window.location.reload()" class="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all">
+                <i class="fa-solid fa-arrow-rotate-right"></i>
+            </button>
+        </header>
 
-  <pre id="reply"></pre>
+        <main id="chat-container" class="flex-1 overflow-y-auto p-8 space-y-6 bg-slate-50/50">
+            <div class="flex gap-4 message-fade">
+                <div class="w-9 h-9 rounded-xl bg-white shadow-sm border border-slate-200 flex items-center justify-center flex-shrink-0">
+                    <i class="fa-solid fa-robot text-blue-600 text-sm"></i>
+                </div>
+                <div class="bg-white border border-slate-200 p-5 rounded-2xl rounded-tl-none max-w-[85%] shadow-sm prose prose-slate prose-sm">
+                    <p>Hello! I am your <strong>AI Compliance Assistant</strong>. How can I help you with the Fire Safety Regulations today?</p>
+                </div>
+            </div>
+        </main>
 
-  <script>
-    async function send() {
-      const msg = document.getElementById("msg").value;
-      const res = await fetch("/ask", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: msg })
-      });
-      const data = await res.json();
-      document.getElementById("reply").innerText = data.reply;
-    }
-  </script>
+        <footer class="p-6 bg-white border-t">
+            <div class="max-w-4xl mx-auto relative flex items-end gap-3 bg-slate-100 p-2 rounded-2xl focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
+                <textarea id="msg" 
+                    rows="1"
+                    placeholder="Type your project details here..." 
+                    class="flex-1 bg-transparent p-3 outline-none resize-none text-slate-700 placeholder:text-slate-400"
+                    oninput="this.style.height = '';this.style.height = this.scrollHeight + 'px'"></textarea>
+                
+                <button id="send-btn" onclick="send()" 
+                    class="bg-blue-600 hover:bg-blue-700 text-white w-12 h-12 rounded-xl transition-all shadow-lg shadow-blue-100 flex items-center justify-center disabled:opacity-50">
+                    <i id="send-icon" class="fa-solid fa-paper-plane"></i>
+                    <i id="loading-icon" class="fa-solid fa-circle-notch animate-spin hidden"></i>
+                </button>
+            </div>
+            <p class="text-[10px] text-center text-slate-400 mt-4 uppercase tracking-tighter">AI-generated guidance should be verified by a qualified professional.</p>
+        </footer>
+    </div>
+
+    <script>
+        const chatContainer = document.getElementById("chat-container");
+        const msgInput = document.getElementById("msg");
+        const sendBtn = document.getElementById("send-btn");
+        const sendIcon = document.getElementById("send-icon");
+        const loadingIcon = document.getElementById("loading-icon");
+
+        // Set Marked options for safer rendering
+        marked.setOptions({
+            breaks: true,
+            gfm: true
+        });
+
+        function appendMessage(role, text) {
+            const isUser = role === 'user';
+            const msgDiv = document.createElement("div");
+            msgDiv.className = `flex gap-4 message-fade ${isUser ? 'flex-row-reverse' : ''}`;
+            
+            // AI gets full Markdown parsing + Typography styling
+            const messageBody = isUser ? 
+                `<p class="whitespace-pre-wrap">${text}</p>` : 
+                `<div class="prose prose-slate prose-sm max-w-none">${marked.parse(text)}</div>`;
+
+            msgDiv.innerHTML = `
+                <div class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm border ${isUser ? 'bg-blue-600 border-blue-600' : 'bg-white border-slate-200'}">
+                    <i class="fa-solid ${isUser ? 'fa-user text-white' : 'fa-robot text-blue-600'} text-xs"></i>
+                </div>
+                <div class="relative group ${isUser ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white border border-slate-200 text-slate-800 rounded-tl-none'} p-5 rounded-2xl max-w-[85%] shadow-sm">
+                    ${messageBody}
+                    ${!isUser ? `
+                        <button onclick="copyToClipboard(this)" class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 text-slate-400 hover:text-blue-600 bg-white border border-slate-100 rounded-md shadow-sm">
+                            <i class="fa-regular fa-copy text-xs"></i>
+                        </button>
+                    ` : ''}
+                </div>
+            `;
+            
+            chatContainer.appendChild(msgDiv);
+            chatContainer.scrollTo({ top: chatContainer.scrollHeight, behavior: 'smooth' });
+        }
+
+        async function send() {
+            const msg = msgInput.value.trim();
+            if (!msg) return;
+
+            // Update UI to loading state
+            msgInput.value = "";
+            msgInput.style.height = 'auto';
+            appendMessage('user', msg);
+            
+            sendBtn.disabled = true;
+            sendIcon.classList.add("hidden");
+            loadingIcon.classList.remove("hidden");
+
+            try {
+                const res = await fetch("/ask", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ message: msg })
+                });
+                const data = await res.json();
+                appendMessage('bot', data.reply);
+            } catch (error) {
+                appendMessage('bot', "### ⚠️ Connection Error\nI couldn't reach the server. Please check your connection and try again.");
+            } finally {
+                sendBtn.disabled = false;
+                sendIcon.classList.remove("hidden");
+                loadingIcon.classList.add("hidden");
+            }
+        }
+
+        function copyToClipboard(btn) {
+            const text = btn.parentElement.innerText;
+            navigator.clipboard.writeText(text);
+            const icon = btn.querySelector('i');
+            icon.className = 'fa-solid fa-check text-green-500';
+            setTimeout(() => { icon.className = 'fa-regular fa-copy text-xs'; }, 2000);
+        }
+
+        msgInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                send();
+            }
+        });
+    </script>
 </body>
 </html>
