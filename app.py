@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify, render_template, session
 import google.generativeai as genai
 
 app = Flask(__name__)
-app.secret_key = "your_super_secret_key_here" 
+app.secret_key = "Justaboyeandhisdreams" 
 
 # 1. Setup
 GEMINI_API_KEY = ""
